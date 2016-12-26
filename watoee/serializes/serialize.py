@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
-# 15/3/31
+# 16/12/26
 # create by: snower
 
+class Serialize(object):
+    pass
