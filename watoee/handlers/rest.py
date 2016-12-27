@@ -4,7 +4,7 @@
 
 import json
 from tornado import gen
-from base import RequestHandler
+from .handler import RequestHandler
 from auth.collection import CollectionAuth
 from auth.group import GroupAuth
 from store.collection.query import QueryCollection

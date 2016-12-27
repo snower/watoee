@@ -86,14 +86,7 @@ class _RequestDispatcher(_BaseRequestDispatcher):
 
 class Application(BaseApplication):
     def __init__(self, *args,**kwargs):
-        super(Application,self).__init__(SessionManager(**settings.SESSION), MongoDB("logging"), *args, **kwargs)
+        super(Application,self).__init__(*args, **kwargs)
 
-    def start(self):
-        self.load()
-        super(Application, self).start()
-
-    def load(self):
-        MongoDB.load()
-        RedisDB.load()
-        Cache.load()
-        self.session_manager.init_db()
+        self.formater = None
+        self.serialize = None

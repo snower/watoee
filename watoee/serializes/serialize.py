@@ -3,4 +3,9 @@
 # create by: snower
 
 class Serialize(object):
-    pass
+    def __init__(self, handler, data):
+        self.handler = handler
+        self.data = data
+
+    def dumps(self):
+        raise NotImplementedError()

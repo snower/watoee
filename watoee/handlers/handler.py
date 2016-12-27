@@ -5,12 +5,11 @@
 import sys
 import functools
 import json
-import copy
 from tornado.ioloop import IOLoop
 from tornado import gen
 from tornado.concurrent import Future
-from tornado.web import httputil, RequestHandler as BaseRequestHandler, MissingArgumentError, HTTPError
-from .error import ApiHTTPError, IllegalError, ServerError
+from tornado.web import RequestHandler as BaseRequestHandler, HTTPError
+from ..exceptions import ApiHTTPError, ServerError
 from ..auth import Config
 from .cursor import Cursor
 
@@ -24,10 +23,6 @@ class RequestHandler(BaseRequestHandler):
 
     @gen.coroutine
     def prepare(self):
-        content_type = self.request.headers.get("Content-Type", "").lower()
-        if self.request.body:
-            if not content_type.startswith("application/json"):
-                raise IllegalError(u"HTTP Content-Type must application/json", 201)
         yield self._auth_config.load()
 
     def finish(self, chunk=None):
@@ -100,21 +95,8 @@ class RequestHandler(BaseRequestHandler):
             self._handle_request_exception(e)
 
     def response(self, result):
-        result = self.get_response_result(result)
-
-        data = json.dumps(result, default=str, ensure_ascii=False).encode("utf-8")
-        self.set_header("Content-Type", "application/json; charset=UTF-8")
-        self.api_status = result["error_code"]
-        self.api_msg = result["error_msg"]
-        self.response_len = len(data)
-
-        if self.request.method == "HEAD":
-            for key, value in result.iteritems():
-                self.set_header("X-STORE-" + key.upper(),
-                                value.encode("utf-8") if isinstance(value, unicode) else str(value))
-            self.finish('')
-        else:
-            self.finish(data)
+        data = self.application.formater(self, result).format()
+        self.application.serialize.dumps(self, data)
 
     def check_etag_header(self):
         return False
@@ -125,21 +107,9 @@ class RequestHandler(BaseRequestHandler):
     @property
     def current_cursor(self):
         if self._current_cursor is None:
-            cursor_id = self.get_query_argument("cursor", None)
+            cursor_id = self.get_query_argument("_c", None)
             if cursor_id:
                 self._current_cursor = Cursor.load(cursor_id)
             else:
                 self._current_cursor = Cursor(0, '', 1)
         return self._current_cursor
-
-    def get_response_result(self, result):
-        data = result if not isinstance(result,ApiHTTPError) else {}
-        result = {
-            "error_code": 0 if not isinstance(result,ApiHTTPError) else result.status_code,
-            "error_msg": '' if not isinstance(result,ApiHTTPError) else result.log_message or httputil.responses.get(result.status_code, 'Unknown'),
-        }
-        if isinstance(data, dict):
-            result.update(data)
-        else:
-            result["result"] = data
-        return result
